@@ -1,0 +1,40 @@
+x-access-gunicorn: &default-gunicorn
+  gunicorn --bind 0.0.0.0:8000 --access-logfile - src:app --reload
+
+version: '3.8'
+services:
+  flask_api:
+    build:
+      context: .
+      target: final
+    ports:
+     - "9000:9000"
+    volumes:
+     - .:/opt
+    env_file:
+      - .env
+    labels:
+      - "traefik.http.routers.app.rule=Host(`app.docker.localhost`)"
+    command: *default-gunicorn
+
+  database:
+    image: postgres:12
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./data:/var/lib/postgresql/data
+
+
+  reverse-proxy:
+    image: traefik:v2.9
+    command: --api.insecure=true --providers.docker
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+volumes:
+  db-data:
